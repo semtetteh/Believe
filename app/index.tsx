@@ -1,19 +1,28 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Eye, EyeOff, Mail, Key, ArrowRight, GraduationCap } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { supabase, signIn } from '@/lib/supabase';
+import { useAuth } from '@/context/AuthContext';
 
 export default function SignInScreen() {
   const { isDark } = useTheme();
+  const { session } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSignIn = () => {
+  useEffect(() => {
+    if (session) {
+      router.replace('/(app)');
+    }
+  }, [session]);
+
+  const handleSignIn = async () => {
     setError('');
     
     if (!email.trim()) {
@@ -28,11 +37,18 @@ export default function SignInScreen() {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        setError(error.message);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Sign in error:', err);
+    } finally {
       setIsLoading(false);
-      router.replace('/(app)');
-    }, 1500);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -41,16 +57,6 @@ export default function SignInScreen() {
 
   const handleSignUp = () => {
     router.push('/signup');
-  };
-
-  const handleSocialSignIn = (provider: string) => {
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      router.replace('/(app)');
-    }, 1500);
   };
 
   return (
@@ -159,7 +165,7 @@ export default function SignInScreen() {
               disabled={isLoading}
             >
               {isLoading ? (
-                <Text style={styles.signInButtonText}>Signing In...</Text>
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
                 <View style={styles.signInButtonContent}>
                   <Text style={styles.signInButtonText}>Sign In</Text>
@@ -167,54 +173,6 @@ export default function SignInScreen() {
                 </View>
               )}
             </TouchableOpacity>
-            
-            <View style={styles.dividerContainer}>
-              <View style={[styles.divider, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
-              <Text style={[styles.dividerText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                or continue with
-              </Text>
-              <View style={[styles.divider, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]} />
-            </View>
-            
-            <View style={styles.socialButtonsContainer}>
-              <TouchableOpacity 
-                style={[
-                  styles.socialButton, 
-                  { backgroundColor: isDark ? '#0F172A' : '#F9FAFB', borderColor: isDark ? '#374151' : '#E5E7EB' }
-                ]}
-                onPress={() => handleSocialSignIn('google')}
-              >
-                <View style={styles.socialIconContainer}>
-                  <View style={styles.googleIcon}>
-                    <View style={[styles.googleIconSegment, { backgroundColor: '#4285F4' }]} />
-                    <View style={[styles.googleIconSegment, { backgroundColor: '#34A853' }]} />
-                    <View style={[styles.googleIconSegment, { backgroundColor: '#FBBC05' }]} />
-                    <View style={[styles.googleIconSegment, { backgroundColor: '#EA4335' }]} />
-                  </View>
-                </View>
-                <Text style={[styles.socialButtonText, { color: isDark ? '#E5E7EB' : '#1F2937' }]}>
-                  Google
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[
-                  styles.socialButton, 
-                  { backgroundColor: isDark ? '#0F172A' : '#F9FAFB', borderColor: isDark ? '#374151' : '#E5E7EB' }
-                ]}
-                onPress={() => handleSocialSignIn('microsoft')}
-              >
-                <View style={styles.microsoftIcon}>
-                  <View style={[styles.microsoftSquare, { backgroundColor: '#F25022' }]} />
-                  <View style={[styles.microsoftSquare, { backgroundColor: '#7FBA00' }]} />
-                  <View style={[styles.microsoftSquare, { backgroundColor: '#00A4EF' }]} />
-                  <View style={[styles.microsoftSquare, { backgroundColor: '#FFB900' }]} />
-                </View>
-                <Text style={[styles.socialButtonText, { color: isDark ? '#E5E7EB' : '#1F2937' }]}>
-                  Microsoft
-                </Text>
-              </TouchableOpacity>
-            </View>
           </View>
           
           <View style={styles.signUpContainer}>
@@ -265,10 +223,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
-  },
-  logoImage: {
-    width: 80,
-    height: 80,
   },
   logoText: {
     fontSize: 36,
@@ -358,49 +312,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-  },
-  socialButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-  },
-  socialIconContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  socialIcon: {
-    width: 24,
-    height: 24,
-  },
-  socialButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-  },
   signUpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -413,27 +324,5 @@ const styles = StyleSheet.create({
   signUpLink: {
     fontFamily: 'Inter-SemiBold',
     fontSize: 16,
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-    position: 'relative',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  googleIconSegment: {
-    width: 10,
-    height: 10,
-  },
-  microsoftIcon: {
-    width: 20,
-    height: 20,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  microsoftSquare: {
-    width: 9,
-    height: 9,
-    margin: 0.5,
   },
 });

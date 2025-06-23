@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, Mail, CircleCheck as CheckCircle2 } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { resetPassword } from '@/lib/supabase';
 
 export default function ForgotPasswordScreen() {
   const { isDark } = useTheme();
@@ -12,7 +13,7 @@ export default function ForgotPasswordScreen() {
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSendResetLink = () => {
+  const handleSendResetLink = async () => {
     setError('');
     
     if (!email.trim()) {
@@ -29,11 +30,20 @@ export default function ForgotPasswordScreen() {
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const { error } = await resetPassword(email);
+      
+      if (error) {
+        setError(error.message);
+      } else {
+        setIsEmailSent(true);
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Reset password error:', err);
+    } finally {
       setIsLoading(false);
-      setIsEmailSent(true);
-    }, 1500);
+    }
   };
 
   const handleBackToSignIn = () => {
